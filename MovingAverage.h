@@ -22,31 +22,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef MOVINGAVERAGE_H
-#define MOVINGAVERAGE_H
+#pragma once
 
 #if defined(__MBED__)
-  #include "mbed.h"
+#include "mbed.h"
 #endif
 
-template <class T, uint16_t N>
-class MovingAverage {
- public:
-  MovingAverage();
-  virtual ~MovingAverage(void);
+// #include "Adafruit_TinyUSB.h"
 
+template <class T, uint16_t N>
+class MovingAverage
+{
+public:
+  MovingAverage() : _first(true), _next(0), _sum(0), _samples(N)
+  {
+    static_assert(N > 0, "Buffer length must be greater than 0");
+  }
+  virtual ~MovingAverage(void) = default;
+
+  // if T is floating point, use float as SumType, otherwise use int, requires C++11
+  using SumType = typename std::conditional<std::is_floating_point<T>::value, float, int>::type;
 
   T add(T value);
-  T get();
-  int32_t get_sum();
+  T get() const { return _result; }
+  auto get_sum() const -> SumType { return _sum; }
+
   void fill(T value);
-  void reset();
+  void reset() { _first = true; }
   void set_samples(uint16_t samples);
 
- private:
+private:
   bool _first;
   uint8_t _next;
-  int32_t _sum;
+  SumType _sum;
   uint16_t _samples;
 
   T _buffer[N];
@@ -54,52 +62,42 @@ class MovingAverage {
 };
 
 template <class T, uint16_t N>
-MovingAverage<T, N>::MovingAverage():
-  _first(true),
-  _next(0),
-  _sum(0),
-  _samples(N) {
-  _result = 0;
-
-  // prevent N==0
-  static_assert(N > 0, "Buffer length must be greater than 0");
-
-}
-
-template <class T, uint16_t N>
-MovingAverage<T, N>::~MovingAverage(void) {
-}
-
-template <class T, uint16_t N>
-T MovingAverage<T, N>::get() {
-  return _result;
-}
-template <class T, uint16_t N>
-int32_t MovingAverage<T, N>::get_sum() {
-  return _sum;
-}
-
-template <class T, uint16_t N>
-T MovingAverage<T, N>::add(T value) {
+T MovingAverage<T, N>::add(T value)
+{
   // fill buffer when using first
-  if (_first) {
+  if (_first)
+  {
     _first = false;
     fill(value);
-
-  } else {
+  }
+  else
+  {
     _sum = _sum - _buffer[_next] + value;
     _buffer[_next] = value;
     _next = (_next + 1) % _samples;
   }
 
-  _result = (_sum + (_samples / 2)) / _samples;
+  // Arduino ide will give a warning for "if constexpr" saying it requires C++17
+  // maybe it's better to keep it simple
+  // if constexpr (std::is_floating_point<T>::value)
+  // {
+  //   _result = static_cast<T>(_sum / _samples);
+  // }
+  // else
+  // {
+  //   _result = static_cast<T>((_sum + (_samples / 2)) / _samples);
+  // }
+
+  _result = static_cast<T>(_sum / _samples);// no rounding for int
 
   return _result;
 }
 
 template <class T, uint16_t N>
-void MovingAverage<T, N>::fill(T value) {
-  for (uint16_t i = 0; i < _samples; i++) {
+void MovingAverage<T, N>::fill(T value)
+{
+  for (uint16_t i = 0; i < _samples; i++)
+  {
     _buffer[i] = value;
   }
 
@@ -108,17 +106,12 @@ void MovingAverage<T, N>::fill(T value) {
 }
 
 template <class T, uint16_t N>
-void MovingAverage<T, N>::reset() {
-  _first = true;
-}
-
-template <class T, uint16_t N>
-void MovingAverage<T, N>::set_samples(uint16_t samples) {
-  if (samples <= N) {
+void MovingAverage<T, N>::set_samples(uint16_t samples)
+{
+  if (samples <= N)
+  {
     _samples = samples;
 
     reset();
   }
 }
-
-#endif
