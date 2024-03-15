@@ -35,6 +35,7 @@ class MovingAverage {
   MovingAverage();
   virtual ~MovingAverage(void);
 
+
   T add(T value);
   T get();
   int32_t get_sum();
@@ -45,7 +46,6 @@ class MovingAverage {
  private:
   bool _first;
   uint8_t _next;
-  uint8_t _shift;
   int32_t _sum;
   uint16_t _samples;
 
@@ -57,19 +57,12 @@ template <class T, uint16_t N>
 MovingAverage<T, N>::MovingAverage():
   _first(true),
   _next(0),
-  _shift(0),
   _sum(0),
   _samples(N) {
   _result = 0;
 
   // prevent N==0
   static_assert(N > 0, "Buffer length must be greater than 0");
-
-  while (_samples >> _shift != 1) {
-    _shift++;
-  }
-
-  _samples = 1 << _shift; //ensure _samples is a power of 2
 
 }
 
@@ -96,10 +89,10 @@ T MovingAverage<T, N>::add(T value) {
   } else {
     _sum = _sum - _buffer[_next] + value;
     _buffer[_next] = value;
-    _next = (_next + 1) & (_samples - 1);
+    _next = (_next + 1) % _samples;
   }
 
-  _result = (_sum + (_samples >> 1)) >> _shift;  // same as (_sum + (_samples / 2)) / _samples;
+  _result = (_sum + (_samples / 2)) / _samples;
 
   return _result;
 }
@@ -125,15 +118,6 @@ void MovingAverage<T, N>::set_samples(uint16_t samples) {
     _samples = samples;
 
     reset();
-
-    _shift = 0;
-
-    while (_samples >> _shift != 1) {
-      _shift++;
-    }
-
-    _samples = 1 << _shift; //ensure _samples is a power of 2
-
   }
 }
 
