@@ -29,6 +29,8 @@ SOFTWARE.
 #endif
 
 // #include "Adafruit_TinyUSB.h"
+#include <type_traits>
+#include <cstdint>
 
 template <class T, uint16_t N>
 class MovingAverage
